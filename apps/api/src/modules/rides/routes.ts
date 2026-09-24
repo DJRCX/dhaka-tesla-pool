@@ -51,6 +51,7 @@ export const rideRoutes: FastifyPluginAsyncZod = async (app) => {
           idempotencyKey: key,
         },
         request.log,
+        app.appConfig.POOL_DETOUR_LIMIT_M,
       );
 
       const detail = await getRideForPassenger(
