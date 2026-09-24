@@ -13,6 +13,7 @@ node_modules/
 dist/
 coverage/
 *.tsbuildinfo
+.npm-install.log
 
 # OS / editor
 .DS_Store
