@@ -1,0 +1,16 @@
+node_modules
+**/node_modules
+.git
+.next
+dist
+**/dist
+coverage
+.pdf
+pdfs
+uploads
+.env
+.env.*
+!.env.example
+*.md
+docs
+apps/web
