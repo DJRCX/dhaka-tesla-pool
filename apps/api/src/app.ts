@@ -4,7 +4,6 @@ import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
 import { sql } from 'drizzle-orm';
 import Fastify, {
-  type FastifyError,
   type FastifyInstance,
   type FastifyReply,
   type FastifyRequest,
@@ -17,12 +16,8 @@ import {
 import { ZodError } from 'zod';
 import type { AppConfig } from './config.js';
 import type { Db } from './db/client.js';
-import {
-  AppError,
-  ErrorCodes,
-  extractPgError,
-  mapPostgresError,
-} from './lib/errors.js';
+import { registerErrorHandler } from './lib/error-handler.js';
+import { AppError, ErrorCodes } from './lib/errors.js';
 
 export type BuildAppOptions = {
   db: Db;
@@ -78,91 +73,18 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
     global: false,
   });
 
+  registerErrorHandler(app);
+
+  const { default: authPlugin } = await import('./modules/auth/session.js');
+  await app.register(authPlugin);
+
+  const { authRoutes } = await import('./modules/auth/routes.js');
+  const { driverProbeRoutes } = await import('./modules/driver/probe.js');
+  await app.register(authRoutes, { prefix: '/api/v1/auth' });
+  await app.register(driverProbeRoutes, { prefix: '/api/v1/driver' });
+
   app.addHook('onRequest', async (request, reply) => {
     reply.header('x-request-id', getRequestId(request));
-  });
-
-  app.setErrorHandler((err: FastifyError | Error, request, reply) => {
-    const requestId = getRequestId(request);
-
-    if (err instanceof AppError) {
-      return reply.status(err.statusCode).send({
-        error: {
-          code: err.code,
-          message: err.message,
-          requestId,
-          ...(err.details !== undefined ? { details: err.details } : {}),
-        },
-      });
-    }
-
-    if (err instanceof ZodError) {
-      return reply.status(400).send({
-        error: {
-          code: ErrorCodes.VALIDATION_ERROR,
-          message: 'Request validation failed',
-          requestId,
-          details: err.issues.map((issue) => ({
-            path: issue.path.join('.'),
-            message: issue.message,
-          })),
-        },
-      });
-    }
-
-    const validation = err as FastifyError;
-    if (validation.validation) {
-      return reply.status(400).send({
-        error: {
-          code: ErrorCodes.VALIDATION_ERROR,
-          message: validation.message,
-          requestId,
-          details: validation.validation,
-        },
-      });
-    }
-
-    if ((err as FastifyError).statusCode === 429) {
-      return reply.status(429).send({
-        error: {
-          code: ErrorCodes.RATE_LIMITED,
-          message: 'Too many requests. Please try again later.',
-          requestId,
-        },
-      });
-    }
-
-    const pg = extractPgError(err);
-    if (pg) {
-      const mapped = mapPostgresError(pg);
-      if (mapped) {
-        return reply.status(mapped.statusCode).send({
-          error: {
-            code: mapped.code,
-            message: mapped.message,
-            requestId,
-            details: mapped.details,
-          },
-        });
-      }
-      request.log.error({ err, constraint: pg.constraint }, 'unmapped postgres error');
-      return reply.status(500).send({
-        error: {
-          code: ErrorCodes.INTERNAL,
-          message: 'An unexpected error occurred',
-          requestId,
-        },
-      });
-    }
-
-    request.log.error({ err }, 'unhandled error');
-    return reply.status(500).send({
-      error: {
-        code: ErrorCodes.INTERNAL,
-        message: 'An unexpected error occurred',
-        requestId,
-      },
-    });
   });
 
   app.get('/health', async (_request, reply) => {

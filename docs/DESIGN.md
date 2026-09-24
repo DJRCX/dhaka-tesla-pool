@@ -411,6 +411,7 @@ Every table explained, as the brief asks the author to be able to do in the inte
 Event types: `REQUEST_CREATED`, `REQUEST_STATUS_CHANGED`, `POOL_CREATED`, `POOL_STATUS_CHANGED`, `MEMBER_JOINED`, `MEMBER_LEFT`, `MEMBER_REMOVED`, `FARE_RECALCULATED`, `FARE_FINALIZED`, `PAYMENT_CAPTURED`, `CASH_DUE_RECORDED`.
 
 **`wallets`** and **`wallet_transactions`**: simulated TeslaPay.
+- New passenger sign-up seeds `balance_paisa = 20000` (৳200.00) per PRD assumption A13 so a fresh account can try wallet payment without a top-up flow.
 - `CHECK (balance_paisa >= 0)` on wallets.
 - Transactions store a signed `amount_paisa` and `balance_after_paisa` so a statement can be rebuilt without recomputing.
 - **Unique** `(ride_request_id, type) WHERE ride_request_id IS NOT NULL`: a ride can be charged at most once, even if *Complete* is retried.
