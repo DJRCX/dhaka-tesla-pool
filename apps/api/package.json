@@ -1,0 +1,31 @@
+{
+  "name": "@teslapool/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/db/migrate.ts",
+    "db:seed": "tsx src/db/seed.ts",
+    "db:seed:reset": "tsx src/db/seed.ts --reset"
+  },
+  "dependencies": {
+    "@node-rs/argon2": "^2.0.2",
+    "@teslapool/shared": "*",
+    "drizzle-orm": "^0.44.5",
+    "fastify": "^5.6.0",
+    "pg": "^8.16.3",
+    "zod": "^4.1.11"
+  },
+  "devDependencies": {
+    "@types/node": "^24.5.2",
+    "@types/pg": "^8.15.5",
+    "drizzle-kit": "^0.31.4",
+    "tsx": "^4.20.5",
+    "vitest": "^3.2.4"
+  }
+}
