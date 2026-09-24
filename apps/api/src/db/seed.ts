@@ -449,9 +449,9 @@ async function resetDynamicData(db: Db): Promise<void> {
     RESTART IDENTITY CASCADE`);
 }
 
-export async function seed(options: { reset?: boolean } = {}): Promise<void> {
+export async function seed(options: { reset?: boolean; databaseUrl?: string } = {}): Promise<void> {
   const config = loadConfig();
-  const pool = createPool(config.DATABASE_URL);
+  const pool = createPool(options.databaseUrl ?? config.DATABASE_URL);
   const db = createDb(pool);
   try {
     if (options.reset) {
