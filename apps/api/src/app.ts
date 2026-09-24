@@ -18,6 +18,8 @@ import type { AppConfig } from './config.js';
 import type { Db } from './db/client.js';
 import { registerErrorHandler } from './lib/error-handler.js';
 import { AppError, ErrorCodes } from './lib/errors.js';
+import { tariffFromConfig } from './modules/fares/fare.js';
+import { ZoneCache } from './modules/zones/cache.js';
 
 export type BuildAppOptions = {
   db: Db;
@@ -29,6 +31,7 @@ declare module 'fastify' {
   interface FastifyInstance {
     db: Db;
     appConfig: AppConfig;
+    zoneCache: ZoneCache;
   }
 }
 
@@ -39,6 +42,9 @@ function getRequestId(request: FastifyRequest): string {
 }
 
 export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> {
+  // Fail fast if tariff would break the integer-paisa invariant
+  tariffFromConfig(opts.config);
+
   const isDev = process.env.NODE_ENV !== 'production';
   const app = Fastify({
     logger:
@@ -67,6 +73,9 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   app.decorate('db', opts.db);
   app.decorate('appConfig', opts.config);
 
+  const zoneCache = await ZoneCache.load(opts.db);
+  app.decorate('zoneCache', zoneCache);
+
   await app.register(helmet, { global: true });
   await app.register(cookie);
   await app.register(rateLimit, {
@@ -80,8 +89,10 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
 
   const { authRoutes } = await import('./modules/auth/routes.js');
   const { driverProbeRoutes } = await import('./modules/driver/probe.js');
+  const { zonesRoutes } = await import('./modules/zones/routes.js');
   await app.register(authRoutes, { prefix: '/api/v1/auth' });
   await app.register(driverProbeRoutes, { prefix: '/api/v1/driver' });
+  await app.register(zonesRoutes, { prefix: '/api/v1' });
 
   app.addHook('onRequest', async (request, reply) => {
     reply.header('x-request-id', getRequestId(request));
