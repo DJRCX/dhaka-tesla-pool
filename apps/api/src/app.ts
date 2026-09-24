@@ -90,9 +90,11 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   const { authRoutes } = await import('./modules/auth/routes.js');
   const { driverProbeRoutes } = await import('./modules/driver/probe.js');
   const { zonesRoutes } = await import('./modules/zones/routes.js');
+  const { rideRoutes } = await import('./modules/rides/routes.js');
   await app.register(authRoutes, { prefix: '/api/v1/auth' });
   await app.register(driverProbeRoutes, { prefix: '/api/v1/driver' });
   await app.register(zonesRoutes, { prefix: '/api/v1' });
+  await app.register(rideRoutes, { prefix: '/api/v1/rides' });
 
   app.addHook('onRequest', async (request, reply) => {
     reply.header('x-request-id', getRequestId(request));
