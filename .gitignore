@@ -13,6 +13,9 @@ node_modules/
 dist/
 coverage/
 *.tsbuildinfo
+.npm-install.log
+.docker-pull*.log
+
 
 # OS / editor
 .DS_Store

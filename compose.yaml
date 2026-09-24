@@ -1,0 +1,35 @@
+services:
+  db:
+    image: ${POSTGRES_IMAGE:-postgres:17-alpine}
+    ports:
+      - '54329:5432'
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-teslapool}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-locally}
+      POSTGRES_DB: ${POSTGRES_DB:-teslapool}
+    volumes:
+      - teslapool_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-teslapool} -d ${POSTGRES_DB:-teslapool}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  db-test:
+    image: ${POSTGRES_IMAGE:-postgres:17-alpine}
+    ports:
+      - '54330:5432'
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-teslapool}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-locally}
+      POSTGRES_DB: teslapool_test
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-teslapool} -d teslapool_test']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  teslapool_pgdata:
