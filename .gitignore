@@ -1,0 +1,20 @@
+# Challenge brief PDF (do not publish)
+pdfs/
+uploads/
+
+# Env and local
+.env
+.env.local
+*.local
+
+# Dependencies and build
+node_modules/
+.next/
+dist/
+coverage/
+*.tsbuildinfo
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
