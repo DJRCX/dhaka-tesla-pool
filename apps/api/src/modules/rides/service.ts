@@ -308,6 +308,11 @@ async function serializeRide(
   };
 }
 
+/**
+ * Cancel own ride. Locks the request; if in a pool, locks the pool first (DESIGN §9.1),
+ * marks membership LEFT, decrements seats, recomputes remaining fares, and auto-cancels
+ * an empty pool. Pool join/leave race coverage completes in Phase 7.
+ */
 export async function cancelRideForPassenger(
   db: Db,
   zoneCache: ZoneCache,
