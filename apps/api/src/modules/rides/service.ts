@@ -19,6 +19,7 @@ import {
 } from '../../lib/state-machine.js';
 import { quoteFare, tariffFromConfig, type FareBreakdown, type Tariff } from '../fares/fare.js';
 import type { ZoneCache } from '../zones/cache.js';
+import { tryAutoMatch } from '../pools/pool.service.js';
 
 type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
 
@@ -57,6 +58,7 @@ export async function createRideRequest(
   tariff: Tariff,
   input: CreateRideInput,
   log?: { info: (obj: object, msg?: string) => void },
+  detourLimitM = 3_000,
 ) {
   if (input.pickupZoneId === input.dropoffZoneId) {
     throw new AppError(
@@ -146,8 +148,29 @@ export async function createRideRequest(
         log,
       );
 
-      // Auto-match deferred to Phase 7 (T7.3)
-      return row;
+      await tryAutoMatch(
+        tx,
+        row.id,
+        input.passengerId,
+        {
+          pickupZoneId: row.pickupZoneId,
+          seats: row.seats,
+          allowPool: row.allowPool,
+        },
+        {
+          zoneCache,
+          tariff,
+          detourLimitM,
+          log,
+        },
+      );
+
+      const [fresh] = await tx
+        .select()
+        .from(rideRequests)
+        .where(eq(rideRequests.id, row.id))
+        .limit(1);
+      return fresh ?? row;
     });
 
     return { ride: created, created: true as const };
