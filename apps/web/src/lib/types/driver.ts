@@ -66,13 +66,15 @@ export type DriverPoolHistoryItem = {
   totalCollectedPaisa: number;
   createdAt: string;
   completedAt: string | null;
-  pickup?: { id: number; slug: string; name: string } | null;
-  members?: Array<{
+  pickup: { id: number; slug: string; name: string } | null;
+  members: Array<{
     passengerName: string;
     seats: number;
     paymentMethod: PaymentMethod;
+    status: string;
     dropoff: { id: number; slug: string | null; name: string | null } | null;
     farePaisa: number;
+    joinedAt: string;
   }>;
 };
 

@@ -42,9 +42,14 @@ export function AppShell({ children, user = null, onSignOut }: AppShellProps) {
                   </nav>
                 )}
                 {user.role === 'DRIVER' && (
-                  <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
-                    <Link href="/drive">Drive</Link>
-                  </Button>
+                  <nav className="mr-1 hidden items-center gap-1 sm:flex" aria-label="Driver">
+                    <Button asChild variant="ghost" size="sm">
+                      <Link href="/drive">Drive</Link>
+                    </Button>
+                    <Button asChild variant="ghost" size="sm">
+                      <Link href="/drive/history">History</Link>
+                    </Button>
+                  </nav>
                 )}
                 <span className="hidden text-sm text-muted-foreground md:inline">{user.name}</span>
                 <Badge variant="secondary">{user.role === 'DRIVER' ? 'Driver' : 'Passenger'}</Badge>
