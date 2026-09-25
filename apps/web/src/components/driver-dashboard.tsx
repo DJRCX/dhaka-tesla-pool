@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { ActivePoolView } from '@/components/active-pool-view';
 import { AuthedShell } from '@/components/authed-shell';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -254,15 +255,8 @@ export function DriverDashboard() {
 
       <DriverHeaderCard activePool={activePool} />
 
-      {activePool ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Active pool</CardTitle>
-            <CardDescription>
-              Pool is live. Seat meter and trip actions land in the next update.
-            </CardDescription>
-          </CardHeader>
-        </Card>
+      {currentPool.data ? (
+        <ActivePoolView pool={currentPool.data} />
       ) : !isOnline ? (
         <Card>
           <CardHeader>
