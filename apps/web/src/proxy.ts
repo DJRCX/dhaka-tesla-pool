@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server';
 
-const PROTECTED_PREFIXES = ['/ride', '/history', '/drive'] as const;
+const PROTECTED_PREFIXES = ['/ride', '/history', '/drive', '/wallet'] as const;
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -23,5 +23,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/ride/:path*', '/history/:path*', '/drive/:path*'],
+  matcher: ['/ride/:path*', '/history/:path*', '/drive/:path*', '/wallet/:path*'],
 };
