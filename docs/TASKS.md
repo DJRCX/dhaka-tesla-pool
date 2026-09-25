@@ -107,7 +107,7 @@ Merge `feature/project-setup` → `master`.
 
 ### T2.1 Scaffold the API package
 - **How:** `apps/api` with `package.json` (`type: module`), dependencies `fastify`, `drizzle-orm`, `pg`, `zod`; dev dependencies `drizzle-kit`, `tsx`, `vitest`, `@types/pg`. `src/config.ts` parses env with Zod (`DATABASE_URL`, `JWT_SECRET` min 32, tariff values with PRD defaults, `POOL_DETOUR_LIMIT_M`) and exits with a readable message on failure.
-- **Done when:** `pnpm --filter api exec tsx src/config.ts` fails clearly without env and passes with `.env`.
+- **Done when:** `npm exec -w @teslapool/api -- tsx src/config.ts` fails clearly without env and passes with `.env`.
 
 ### T2.2 Define the schema in Drizzle
 - **How:** In `src/db/schema.ts`, define every table, enum, CHECK, partial unique index, and generated column exactly as in DESIGN §7.3. Checklist, since these are the integrity guarantees:
@@ -144,13 +144,13 @@ Merge `feature/project-setup` → `master`.
     | Shirin | `shirin@teslapool.test` | PASSENGER | Wallet ৳50.00 (less than her ৳80 solo fare, which demonstrates `INSUFFICIENT_BALANCE`; cash still works) |
 
   - One **completed** pooled ride "yesterday" (Nusrat + Rafiq on Bullet, fares ৳90.00 and ৳96.00, with a full event trail and wallet debits) so history pages are not empty in the demo.
-  - `pnpm db:seed:reset` (P1) truncates rides, pools, members, events, and transactions, then re-seeds, for re-running the demo.
+  - `npm run db:seed:reset` (P1) truncates rides, pools, members, events, and transactions, then re-seeds, for re-running the demo.
 - **Done when:** Seeding twice leaves exactly 4 users and 1 historical pool; the historical fares match the PRD worked example.
 - **Commit:** `feat(db): seed Dhaka zones, distances and the Banani rush-hour cast`
 
 ### T2.5 Constraint smoke tests
 - **How:** Vitest integration tests against `db-test` that insert directly and expect Postgres errors: seats over capacity (`23514`), second active pool for Bullet (`23505`), second active request for Nusrat (`23505`), negative wallet (`23514`). Add a `test/setup.ts` global setup that runs migrations once and truncates tables between tests.
-- **Done when:** `pnpm --filter api test` passes and fails if you delete a constraint from the migration.
+- **Done when:** `npm test -w @teslapool/api` passes and fails if you delete a constraint from the migration.
 - **Commit:** `test(db): verify capacity and uniqueness constraints at the database level`
 
 Merge → `master`.
@@ -161,7 +161,7 @@ Merge → `master`.
 
 ### T3.1 Fastify app factory
 - **How:** `src/app.ts` exports `buildApp({ db, config })` so tests get a fresh app with the test DB. Register: Zod type provider, `@fastify/helmet`, `@fastify/cookie`, `@fastify/rate-limit` (global off, enabled per route), request ID (`genReqId` using `x-request-id` or a random ID, echoed in the response header). `src/server.ts` only calls `listen` on `0.0.0.0:${API_PORT}`.
-- **Done when:** `pnpm --filter api dev` starts and logs JSON.
+- **Done when:** `npm run dev -w @teslapool/api` starts and logs JSON.
 
 ### T3.2 Error model
 - **How:** `lib/errors.ts` with `class AppError(status, code, message, details?)` and the codes from DESIGN §10.3. One `setErrorHandler` that maps: `AppError` → its status; Zod validation → 400 `VALIDATION_ERROR` with field details; Postgres `23505`/`23514` by constraint name → the matching 409 code; anything else → 500 `INTERNAL` with the stack logged but not returned. Every response includes `requestId`.
@@ -178,7 +178,7 @@ Merge → `master`.
 - **Commit:** `feat(api): add structured logging and database health check`
 
 ### T3.5 API Dockerfile and migrate service
-- **How:** Multi-stage `apps/api/Dockerfile` (`node:24-alpine`): install with `pnpm fetch` + `pnpm install --offline --frozen-lockfile`, build, then a slim runtime stage running as the `node` user. Add Compose services `migrate` (runs `db:migrate && db:seed`, `restart: "no"`) and `api` (`depends_on: migrate: condition: service_completed_successfully`, health check on `/health`, port `48080:4000`).
+- **How:** Multi-stage `apps/api/Dockerfile` (`node:24-alpine`): install with `npm ci`, build workspace packages, then a slim runtime stage running as a non-root user. Add Compose services `migrate` (runs `db:migrate && db:seed`, `restart: "no"`) and `api` (`depends_on: migrate: condition: service_completed_successfully`, health check on `/health`, port `48080:4000`).
 - **Done when:** `docker compose up api` from a clean state migrates, seeds, and serves `/health`.
 - **Commit:** `build(docker): containerise api with migration and seed step`
 
@@ -347,12 +347,12 @@ Merge → `master`.
 ## Phase 10 — `feature/web-foundation`
 
 ### T10.1 Scaffold Next.js
-- **How:** `pnpm create next-app@latest apps/web --ts --tailwind --eslint --app --src-dir --import-alias "@/*"`. Dev port **43123** (`next dev -p 43123`). Add `next.config.ts` rewrites: `/api/:path*` → `${API_INTERNAL_URL}/api/:path*`. Add security headers.
-- **Done when:** `pnpm --filter web dev` serves the page and `/api/v1/zones` returns zones through the rewrite.
+- **How:** `npx create-next-app@latest apps/web --ts --tailwind --eslint --app --src-dir --import-alias "@/*"` (npm workspaces; do not introduce pnpm). Dev port **43123** (`next dev -p 43123`). Add `next.config.ts` rewrites: `/api/:path*` → `${API_INTERNAL_URL}/api/:path*`. Add security headers.
+- **Done when:** `npm run dev -w @teslapool/web` serves the page and `/api/v1/zones` returns zones through the rewrite.
 - **Commit:** `feat(web): scaffold Next.js app with same-origin API rewrite`
 
 ### T10.2 shadcn/ui and app shell
-- **How:** `pnpm dlx shadcn@latest init`, then add `button card input label select switch dialog badge skeleton sonner separator`. App shell: top bar with product name, role badge, and sign-out; mobile-first container. Pick one accent colour and use it consistently.
+- **How:** `npx shadcn@latest init`, then add `button card input label select switch dialog badge skeleton sonner separator`. App shell: top bar with product name, role badge, and sign-out; mobile-first container. Pick one accent colour and use it consistently.
 - **Commit:** `feat(web): add shadcn/ui primitives and responsive app shell`
 
 ### T10.3 API client and query setup
@@ -420,7 +420,7 @@ Merge → `master`.
 - **Commit:** `build(docker): run web, api, migrations and postgres with one compose command`
 
 ### T13.3 CI (P1)
-- **How:** A workflow that runs `pnpm install`, lint, type-check, starts `db-test` as a service container, runs tests, and builds both Docker images.
+- **How:** A workflow that runs `npm ci`, lint, type-check, starts `db-test` as a service container, runs tests, and builds both Docker images.
 - **Commit:** `build(repo): add CI for lint, typecheck, tests and image builds`
 
 Merge → `master`. **MVP features are now integrated.**
@@ -447,7 +447,7 @@ Cut it: `git checkout master && git checkout -b pre-release && git push -u origi
   5. Architecture diagram and ERD (copy the Mermaid from DESIGN).
   6. Tech stack table with justification (from TECH_STACK).
   7. Project structure.
-  8. Prerequisites (Docker, or Node 24 + pnpm for local dev).
+  8. Prerequisites (Docker, or Node 24 + npm for local dev).
   9. Environment variables (point to `.env.example`, never real values).
   10. Local setup, Docker instructions, migration and seed commands, reset command.
   11. Running frontend, backend, and tests.
@@ -464,7 +464,7 @@ Cut it: `git checkout master && git checkout -b pre-release && git push -u origi
 
 ### T14.4 Deploy on free tiers
 - **How:**
-  1. Create a Neon free project; run migrations and seed against it from your machine (`DATABASE_URL=… pnpm db:migrate && pnpm db:seed`).
+  1. Create a Neon free project; run migrations and seed against it from your machine (`DATABASE_URL=… npm run db:migrate && npm run db:seed`).
   2. Render: new web service from `apps/api/Dockerfile`, env vars from `.env.example` with production values (fresh `JWT_SECRET`), health check path `/health`.
   3. Vercel: import the repo with root `apps/web`; set `API_INTERNAL_URL` to the Render URL.
   4. Check sign-in works (cookie is first-party on the Vercel domain via the rewrite), then run the demo end to end on the public URL.
