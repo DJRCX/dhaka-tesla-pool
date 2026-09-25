@@ -102,6 +102,9 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   await app.register(poolRoutes, { prefix: '/api/v1/pools' });
   await app.register(poolLifecycleRoutes, { prefix: '/api/v1/pools' });
 
+  const { walletRoutes } = await import('./modules/wallet/routes.js');
+  await app.register(walletRoutes, { prefix: '/api/v1/wallet' });
+
   app.addHook('onRequest', async (request, reply) => {
     reply.header('x-request-id', getRequestId(request));
   });

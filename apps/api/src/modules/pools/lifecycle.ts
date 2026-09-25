@@ -6,6 +6,7 @@ import { recordEvent } from '../../lib/events.js';
 import { AppError, ErrorCodes } from '../../lib/errors.js';
 import { assertTransition, canTransition } from '../../lib/state-machine.js';
 import { assertPoolInvariants } from '../pools/accept.js';
+import { settleMemberPayment } from '../wallet/charge.js';
 
 type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
 
@@ -50,6 +51,7 @@ async function activeMembers(tx: Tx, poolId: string) {
       distanceChargePaisa: poolMembers.distanceChargePaisa,
       poolDiscountPaisa: poolMembers.poolDiscountPaisa,
       paymentMethod: rideRequests.paymentMethod,
+      passengerId: rideRequests.passengerId,
     })
     .from(poolMembers)
     .innerJoin(rideRequests, eq(poolMembers.rideRequestId, rideRequests.id))
@@ -238,15 +240,15 @@ export async function completePool(
         },
         log,
       );
-      // Phase 9 charges wallets; until then record cash due for everyone
-      await recordEvent(
+      await settleMemberPayment(
         tx,
         {
+          userId: m.passengerId,
           rideRequestId: m.rideRequestId,
           poolId,
+          farePaisa: fare,
+          paymentMethod: m.paymentMethod,
           actorUserId: driverId,
-          type: 'CASH_DUE_RECORDED',
-          data: { amountPaisa: fare, paymentMethod: m.paymentMethod },
         },
         log,
       );
