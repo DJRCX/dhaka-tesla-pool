@@ -1,22 +1,10 @@
 import { eq, sql } from 'drizzle-orm';
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
-import { z } from 'zod';
+import { LoginBodySchema, SignupBodySchema } from '@teslapool/shared';
 import { driverProfiles, users, vehicles, wallets, zones } from '../../db/schema.js';
 import { registerErrorHandler } from '../../lib/error-handler.js';
 import { AppError, ErrorCodes } from '../../lib/errors.js';
 import { hashPassword, verifyPassword } from './password.js';
-
-const signupBody = z.object({
-  name: z.string().min(1).max(80),
-  email: z.string().email(),
-  phone: z.string().min(5).max(32),
-  password: z.string().min(8).max(200),
-});
-
-const loginBody = z.object({
-  email: z.string().email(),
-  password: z.string().min(1).max(200),
-});
 
 /** New passenger TeslaPay balance on sign-up (PRD assumption A13): ৳200.00 */
 export const SIGNUP_WALLET_PAISA = 20_000;
@@ -34,7 +22,7 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
         },
       },
       schema: {
-        body: signupBody,
+        body: SignupBodySchema,
       },
     },
     async (request, reply) => {
@@ -109,7 +97,7 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
         },
       },
       schema: {
-        body: loginBody,
+        body: LoginBodySchema,
       },
     },
     async (request, reply) => {

@@ -10,3 +10,9 @@ export {
   PaymentMethod,
   PaymentMethodSchema,
 } from './enums.js';
+export {
+  SignupBodySchema,
+  LoginBodySchema,
+  type SignupBody,
+  type LoginBody,
+} from './auth.js';
