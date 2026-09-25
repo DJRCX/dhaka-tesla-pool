@@ -231,19 +231,34 @@ export const driverFlowRoutes: FastifyPluginAsyncZod = async (app) => {
 
       const out = [];
       for (const pool of history) {
-        const fareRows = await app.db
+        const pickup = app.zoneCache.getById(pool.pickupZoneId);
+        const memberRows = await app.db
           .select({
+            passengerName: users.name,
+            seats: poolMembers.seats,
+            paymentMethod: rideRequests.paymentMethod,
             farePaisa: poolMembers.farePaisa,
             base: poolMembers.baseFarePaisa,
             distance: poolMembers.distanceChargePaisa,
             discount: poolMembers.poolDiscountPaisa,
+            dropoffId: zones.id,
+            dropoffSlug: zones.slug,
+            dropoffName: zones.name,
+            memberStatus: poolMembers.status,
+            joinedAt: poolMembers.joinedAt,
           })
           .from(poolMembers)
-          .where(eq(poolMembers.poolId, pool.id));
-        const totalCollectedPaisa = fareRows.reduce(
+          .innerJoin(rideRequests, eq(poolMembers.rideRequestId, rideRequests.id))
+          .innerJoin(users, eq(rideRequests.passengerId, users.id))
+          .leftJoin(zones, eq(rideRequests.dropoffZoneId, zones.id))
+          .where(eq(poolMembers.poolId, pool.id))
+          .orderBy(asc(poolMembers.joinedAt));
+
+        const totalCollectedPaisa = memberRows.reduce(
           (s, r) => s + (r.farePaisa ?? r.base + r.distance - r.discount),
           0,
         );
+
         out.push({
           id: pool.id,
           status: pool.status,
@@ -252,6 +267,20 @@ export const driverFlowRoutes: FastifyPluginAsyncZod = async (app) => {
           totalCollectedPaisa,
           createdAt: pool.createdAt,
           completedAt: pool.completedAt,
+          pickup: pickup
+            ? { id: pickup.id, slug: pickup.slug, name: pickup.name }
+            : null,
+          members: memberRows.map((m) => ({
+            passengerName: m.passengerName,
+            seats: m.seats,
+            paymentMethod: m.paymentMethod,
+            status: m.memberStatus,
+            farePaisa: m.farePaisa ?? m.base + m.distance - m.discount,
+            dropoff: m.dropoffId
+              ? { id: m.dropoffId, slug: m.dropoffSlug, name: m.dropoffName }
+              : null,
+            joinedAt: m.joinedAt,
+          })),
         });
       }
       return reply.send({ pools: out });
