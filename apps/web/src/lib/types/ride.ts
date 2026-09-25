@@ -55,7 +55,7 @@ export type FareQuote = {
 };
 
 export type WalletTransaction = {
-  id: string;
+  id: number;
   type: string;
   amountPaisa: number;
   balanceAfterPaisa: number;

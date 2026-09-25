@@ -156,7 +156,10 @@ export function RideRequestForm() {
         <Label htmlFor={pickupId}>Pickup</Label>
         <Select
           value={pickupZoneId?.toString() ?? ''}
-          onValueChange={(value) => setPickupZoneId(Number(value))}
+          onValueChange={(value) => {
+            if (value == null) return;
+            setPickupZoneId(Number(value));
+          }}
         >
           <SelectTrigger id={pickupId} className="w-full">
             <SelectValue placeholder="Where are you?" />
@@ -177,7 +180,10 @@ export function RideRequestForm() {
         <Label htmlFor={dropoffId}>Destination</Label>
         <Select
           value={dropoffZoneId?.toString() ?? ''}
-          onValueChange={(value) => setDropoffZoneId(Number(value))}
+          onValueChange={(value) => {
+            if (value == null) return;
+            setDropoffZoneId(Number(value));
+          }}
           disabled={pickupZoneId === null}
         >
           <SelectTrigger id={dropoffId} className="w-full">
