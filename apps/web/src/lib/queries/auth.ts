@@ -1,6 +1,6 @@
-import type { UserRole } from '@teslapool/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiFetch } from '@/lib/api';
+import type { UserRole } from '@teslapool/shared';
+import { ApiError, apiFetch } from '@/lib/api';
 
 export type AuthUser = {
   id: string;
@@ -21,10 +21,19 @@ export type MeResponse = {
 
 export const meQueryKey = ['auth', 'me'] as const;
 
+async function fetchMe(): Promise<MeResponse | null> {
+  try {
+    return await apiFetch<MeResponse>('/api/v1/auth/me');
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) return null;
+    throw error;
+  }
+}
+
 export function useMe(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: meQueryKey,
-    queryFn: () => apiFetch<MeResponse>('/api/v1/auth/me'),
+    queryFn: fetchMe,
     retry: false,
     enabled: options?.enabled ?? true,
   });
@@ -70,4 +79,8 @@ export function useLogout() {
       queryClient.removeQueries({ queryKey: meQueryKey });
     },
   });
+}
+
+export function homePathForRole(role: UserRole): '/drive' | '/ride' {
+  return role === 'DRIVER' ? '/drive' : '/ride';
 }
