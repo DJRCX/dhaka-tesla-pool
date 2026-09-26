@@ -89,7 +89,7 @@ function DriverHeaderCard({ activePool }: { activePool: boolean }) {
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
-          <Label>Current zone</Label>
+          <Label htmlFor="driver-zone">Current zone</Label>
           <Select
             value={zoneId?.toString()}
             onValueChange={(value) => {
@@ -102,7 +102,7 @@ function DriverHeaderCard({ activePool }: { activePool: boolean }) {
             }}
             disabled={activePool || setStatus.isPending}
           >
-            <SelectTrigger className="w-full">
+            <SelectTrigger id="driver-zone" className="w-full">
               <SelectValue placeholder="Choose a zone" />
             </SelectTrigger>
             <SelectContent>
