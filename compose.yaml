@@ -16,6 +16,7 @@ services:
       retries: 10
 
   db-test:
+    profiles: ['test']
     image: ${POSTGRES_IMAGE:-postgres:17-alpine}
     ports:
       - '54330:5432'
@@ -37,6 +38,8 @@ services:
       dockerfile: apps/api/Dockerfile
     image: dhaka-tesla-pool-api:local
     restart: 'no'
+    env_file:
+      - .env
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-teslapool}:${POSTGRES_PASSWORD:-change-me-locally}@db:5432/${POSTGRES_DB:-teslapool}
       JWT_SECRET: ${JWT_SECRET:-replace-with-32+-random-characters-here}
@@ -59,6 +62,8 @@ services:
       dockerfile: apps/api/Dockerfile
     ports:
       - '48080:4000'
+    env_file:
+      - .env
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-teslapool}:${POSTGRES_PASSWORD:-change-me-locally}@db:5432/${POSTGRES_DB:-teslapool}
       JWT_SECRET: ${JWT_SECRET:-replace-with-32+-random-characters-here}
@@ -79,6 +84,33 @@ services:
       timeout: 5s
       retries: 12
       start_period: 10s
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        # Baked into Next.js /api/* rewrites at build time (see apps/web/next.config.ts).
+        API_INTERNAL_URL: http://api:4000
+    image: dhaka-tesla-pool-web:local
+    ports:
+      - '43123:3000'
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: '3000'
+      HOSTNAME: 0.0.0.0
+      API_INTERNAL_URL: http://api:4000
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:3000/ >/dev/null || exit 1']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
 
 volumes:
   teslapool_pgdata:
