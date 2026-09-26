@@ -2,6 +2,7 @@ node_modules
 **/node_modules
 .git
 .next
+**/.next
 dist
 **/dist
 coverage
@@ -12,5 +13,9 @@ uploads
 .env.*
 !.env.example
 *.md
+!apps/web/AGENTS.md
 docs
-apps/web
+agent-transcripts
+.cursor
+*.tsbuildinfo
+**/*.tsbuildinfo
