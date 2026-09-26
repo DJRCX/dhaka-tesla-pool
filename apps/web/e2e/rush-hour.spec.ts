@@ -38,9 +38,9 @@ test.describe('rush-hour pooling story', () => {
     if (!(await online.isChecked())) {
       await online.click();
     }
-    await expect(
-      driver.getByText(/Accepting riders in Banani|No riders waiting in Banani/),
-    ).toBeVisible({ timeout: 15_000 });
+    await expect(driver.getByText('Accepting riders in Banani')).toBeVisible({
+      timeout: 15_000,
+    });
 
     await demoSignIn(nusrat, 'Nusrat');
     await requestRide(nusrat, 'Banani', 'Mohakhali');
