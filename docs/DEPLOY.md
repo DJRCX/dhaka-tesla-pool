@@ -97,3 +97,7 @@ If any free host cannot run the API, **fall back to Compose** — the brief allo
 | Demo video | Added on `release/v1.0.0` (Phase 15) |
 
 Repository: https://github.com/DJRCX/dhaka-tesla-pool
+
+### CI note
+
+GitHub Actions (`.github/workflows/ci.yml`) runs lint, typecheck, Vitest against Compose `db-test`, and builds the API/web images. Local Podman users may need `POSTGRES_IMAGE` and longer image-build times; behaviour matches Docker Compose once images are present.
