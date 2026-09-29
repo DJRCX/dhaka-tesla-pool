@@ -47,6 +47,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
 
   const isDev = process.env.NODE_ENV !== 'production';
   const app = Fastify({
+    trustProxy: opts.config.TRUST_PROXY,
     logger:
       opts.logger ??
       ({

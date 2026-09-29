@@ -51,6 +51,10 @@ const envSchema = z.object({
   FARE_POOL_DISCOUNT_PERCENT: z.coerce.number().int().min(0).max(50).default(20),
   POOL_DETOUR_LIMIT_M: z.coerce.number().int().positive().default(3000),
   LOG_LEVEL: z.string().default('info'),
+  TRUST_PROXY: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
 });
 
 export type AppConfig = z.infer<typeof envSchema>;
