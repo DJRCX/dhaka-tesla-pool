@@ -29,4 +29,3 @@ apps/web/blob-report/
 
 # Local deployment secrets
 .deploy/
-apps/api/public/

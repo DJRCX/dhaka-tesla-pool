@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
   "installCommand": "cd ../.. && npm ci",
-  "buildCommand": "cd ../.. && npm run build -w @teslapool/shared && npm run build -w @teslapool/api && mkdir -p apps/api/public",
+  "buildCommand": "cd ../.. && npm run build -w @teslapool/shared && npm run build -w @teslapool/api",
   "outputDirectory": "public",
   "regions": ["bom1"],
   "functions": {
