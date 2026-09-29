@@ -94,6 +94,12 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
         rateLimit: {
           max: 10,
           timeWindow: '1 minute',
+          // Behind a shared proxy (Vercel rewrite) many users can share one IP
+          hook: 'preHandler',
+          keyGenerator: (request) => {
+            const email = (request.body as { email?: unknown } | undefined)?.email;
+            return `${request.ip}:${typeof email === 'string' ? email.toLowerCase() : ''}`;
+          },
         },
       },
       schema: {
