@@ -1,12 +1,119 @@
 # Deployment guide
 
-Dhaka Tesla Pool v1 is designed to run on free tiers (Vercel web + Render API + Neon Postgres) or entirely via Docker Compose. **This submission uses Docker Compose as the documented public run path** because Neon / Render / Vercel projects were not provisioned with credentials in this environment. The free-tier recipe below is still the intended cloud shape from [`TECH_STACK.md`](./TECH_STACK.md) and [`DESIGN.md` §13](./DESIGN.md).
+## Live deployment
+
+| Surface | URL |
+|---|---|
+| Application | https://dhaka-tesla-pool-puce.vercel.app |
+| API health | https://dhaka-tesla-pool-api-eight.vercel.app/health |
+| Repository | https://github.com/DJRCX/dhaka-tesla-pool |
+
+Demo accounts and the rush-hour walkthrough are in the [README](../README.md#demo-credentials). Everything runs on free tiers in Mumbai, the closest region to Dhaka:
+
+| Piece | Host | Region |
+|---|---|---|
+| Web (Next.js) | Vercel Hobby, project `dhaka-tesla-pool`, root `apps/web` | `bom1` |
+| API (Fastify) | Vercel Function, project `dhaka-tesla-pool-api`, root `apps/api` | `bom1` |
+| Database | Supabase free Postgres 17 | `ap-south-1` |
+
+```mermaid
+flowchart LR
+    B["Browser"] --> W["dhaka-tesla-pool-puce.vercel.app<br/>Next.js"]
+    W -- "rewrite /api/*" --> A["dhaka-tesla-pool-api-eight.vercel.app<br/>Fastify in a Vercel Function"]
+    A -- "Supavisor transaction pooler :6543, TLS" --> P[("Supabase Postgres")]
+```
+
+The browser only ever calls the web origin, so the `dtp_session` cookie stays first-party, exactly as in Docker Compose.
 
 ---
 
-## Documented deployment: Docker Compose
+## How the Vercel setup works
 
-Works on any machine with Docker (or Podman + `docker-compose` compatibility).
+### API project (`apps/api`)
+
+- [`apps/api/api/index.js`](../apps/api/api/index.js) is the single Vercel Function. It builds the Fastify app once per instance from the compiled `dist/` output and hands each request to `app.server`.
+- [`apps/api/vercel.json`](../apps/api/vercel.json) installs and builds from the monorepo root (`npm ci`, then build `@teslapool/shared` and `@teslapool/api`), pins the function to `bom1`, and rewrites every path to that function. `framework` is `null` on purpose: Vercel's Fastify auto-detection would pick `src/app.ts`, which only exports `buildApp()`.
+- `apps/api/public/robots.txt` exists because Vercel needs a non-empty output directory. It also keeps crawlers off the API.
+
+| Variable | Value |
+|---|---|
+| `DATABASE_URL` | `postgres://teslapool_app.<project-ref>:<password>@aws-0-ap-south-1.pooler.supabase.com:6543/postgres?sslmode=no-verify` (sensitive) |
+| `JWT_SECRET` | 64 random hex characters (sensitive) |
+| `TRUST_PROXY` | `true` |
+| `WEB_ORIGIN` | `https://dhaka-tesla-pool-puce.vercel.app` |
+| `LOG_LEVEL` | `info` |
+
+### Web project (`apps/web`)
+
+- [`apps/web/vercel.json`](../apps/web/vercel.json) builds `@teslapool/shared` first, then the Next.js app.
+- `API_INTERNAL_URL=https://dhaka-tesla-pool-api-eight.vercel.app`. Next.js bakes rewrites in at **build** time, so change it and redeploy together.
+
+### Database (Supabase)
+
+1. Create a free project in `ap-south-1`.
+2. In the SQL editor, create a dedicated login role that will own the schema:
+
+```sql
+CREATE ROLE teslapool_app LOGIN PASSWORD '<long random password>';
+GRANT CREATE, CONNECT ON DATABASE postgres TO teslapool_app;
+GRANT USAGE, CREATE ON SCHEMA public TO teslapool_app;
+```
+
+3. From a machine with Node 24+, migrate and seed as that role through the **session** pooler (port 5432):
+
+```bash
+export DATABASE_URL='postgres://teslapool_app.<project-ref>:<password>@aws-0-ap-south-1.pooler.supabase.com:5432/postgres?sslmode=no-verify'
+export JWT_SECRET='<same secret as the API>'
+npm ci
+npm run db:migrate
+npm run db:seed
+```
+
+4. Supabase exposes the `public` schema through its auto-generated Data API. Enable row-level security on every table with **no policies**, so the Data API sees nothing. The API is unaffected because `teslapool_app` owns the tables, and owners bypass RLS:
+
+```sql
+-- run as teslapool_app
+DO $$ DECLARE t text; BEGIN
+  FOR t IN SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tableowner = current_user LOOP
+    EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', t);
+  END LOOP;
+END $$;
+```
+
+5. The deployed API uses the **transaction** pooler (port 6543), which suits many short-lived serverless connections. Row locks (`SELECT … FOR UPDATE`) still work because each seat claim runs inside a single transaction.
+
+### Reset the live demo data
+
+Run the same command as locally, with the session-pooler `DATABASE_URL` from step 3:
+
+```bash
+npm run db:seed:reset
+```
+
+### Verify
+
+```bash
+curl https://dhaka-tesla-pool-api-eight.vercel.app/health      # {"status":"ok","db":"ok"}
+E2E_BASE_URL=https://dhaka-tesla-pool-puce.vercel.app npm run test:e2e -w @teslapool/web
+npm run db:seed:reset                                           # e2e leaves a completed ride behind
+```
+
+---
+
+## Free-tier limits
+
+| Provider | Limit that affects the demo |
+|---|---|
+| Vercel Hobby | The first request after idle pays a function cold start plus a new database connection (about 1–2 s). Non-commercial use only |
+| Supabase free | Projects pause after about a week with no traffic; resume from the dashboard. 500 MB database, shared compute |
+
+Checked on 27 September 2026.
+
+---
+
+## Fallback: Docker Compose
+
+Works on any machine with Docker (or Podman with Compose).
 
 ```bash
 git clone https://github.com/DJRCX/dhaka-tesla-pool.git
@@ -22,82 +129,11 @@ docker compose up --build
 | http://localhost:48080/health | API health |
 | localhost:54329 | Postgres |
 
-- `migrate` runs SQL migrations + seed, then exits.
-- Web image bakes `API_INTERNAL_URL=http://api:4000` at **build** time (Next.js rewrites). Rebuild `web` if that URL changes.
+- `migrate` runs SQL migrations and the seed, then exits.
+- The web image bakes `API_INTERNAL_URL=http://api:4000` in at build time. Rebuild `web` if that URL changes.
 - If `postgres:17-alpine` cannot be pulled, set `POSTGRES_IMAGE=docker.io/pgvector/pgvector:pg16` (or another Postgres 16+ image) in `.env`.
+- Reset demo data: `docker compose exec api node dist/db/seed.js --reset`.
 
-### Reset demo data
+### CI
 
-```bash
-docker compose exec api node dist/db/seed.js --reset
-```
-
-### Smoke check
-
-1. Open http://localhost:43123
-2. **Continue as Jashim** → Banani → Online
-3. In another browser / private window: **Continue as Nusrat** → Banani → Mohakhali → Request
-4. Accept on the driver; complete the PRD rush-hour story (see README)
-
----
-
-## Optional free-tier recipe (when accounts are available)
-
-### 1. Neon (Postgres)
-
-1. Create a free Neon project; copy the pooled `DATABASE_URL`.
-2. From a machine with Node 24+:
-
-```bash
-export DATABASE_URL='postgres://…'   # Neon
-export JWT_SECRET='…'               # ≥32 chars
-npm ci
-npm run db:migrate
-npm run db:seed
-```
-
-### 2. Render (API)
-
-1. New **Web Service** from this repo.
-2. Dockerfile: `apps/api/Dockerfile` (build context = repo root).
-3. Health check path: `/health`.
-4. Env: `DATABASE_URL`, `JWT_SECRET`, `WEB_ORIGIN` (Vercel URL), fare knobs from `.env.example`, `NODE_ENV=production`, `API_PORT=4000`.
-5. Note the public API URL (e.g. `https://teslapool-api.onrender.com`).
-
-### 3. Vercel (web)
-
-1. Import the repo; set root / project to `apps/web` (or monorepo settings that build `@teslapool/web`).
-2. Env: `API_INTERNAL_URL=https://<render-api-host>` (no trailing slash). Rebuild after changes — rewrites are compile-time.
-3. Deploy. Sign-in cookies stay first-party on the Vercel domain because the browser only calls `/api/*` on that origin.
-
-### 4. End-to-end on the public URL
-
-Run the Banani rush-hour demo with two browsers. Expect **cold starts** on free Render: the first `/health` or login after idle can take tens of seconds while the instance wakes.
-
----
-
-## Free-tier limits to expect
-
-| Provider | Typical limit that affects the demo |
-|---|---|
-| Render free web | Spins down when idle; first request after sleep is slow |
-| Neon free | Storage / compute caps; suspend after inactivity on some plans |
-| Vercel Hobby | Build minutes and bandwidth caps; fine for this MVP |
-
-If any free host cannot run the API, **fall back to Compose** — the brief allows that.
-
----
-
-## Public URLs for this submission
-
-| Surface | URL |
-|---|---|
-| Application | `docker compose up` → http://localhost:43123 |
-| API health | http://localhost:48080/health |
-| Demo video | Added on `release/v1.0.0` (Phase 15) |
-
-Repository: https://github.com/DJRCX/dhaka-tesla-pool
-
-### CI note
-
-GitHub Actions (`.github/workflows/ci.yml`) runs lint, typecheck, Vitest against Compose `db-test`, and builds the API/web images. Local Podman users may need `POSTGRES_IMAGE` and longer image-build times; behaviour matches Docker Compose once images are present.
+GitHub Actions (`.github/workflows/ci.yml`) runs lint, typecheck, Vitest against the Compose `db-test` service, and builds both images.

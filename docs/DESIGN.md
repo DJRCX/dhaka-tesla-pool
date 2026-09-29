@@ -673,13 +673,15 @@ Integration tests use a real database on purpose. The constraints and row locks 
 
 **Deployment (free tier).**
 
-| Piece | Primary choice | Fallback |
+| Piece | Deployed on | Fallback |
 |---|---|---|
-| Web | Vercel Hobby | Render static/web service |
-| API | Render free web service (Docker) | Koyeb free instance |
-| DB | Neon free Postgres | Supabase free Postgres |
+| Web | Vercel Hobby, `bom1` (Mumbai) | Render static/web service |
+| API | Vercel Function (`apps/api/api/index.js` wraps `buildApp()`), `bom1` | Render free web service (Docker) |
+| DB | Supabase free Postgres 17, `ap-south-1` (Mumbai), via the Supavisor transaction pooler | Neon free Postgres |
 
-Limits to state in the README: free API instances sleep when idle, so the first request can take close to a minute. Free databases have storage and compute caps. Verify each provider's current free-tier terms at deploy time. If none can host the API for free, the documented deployment is `docker compose up` on any machine with Docker.
+Web and API are two Vercel projects built from the same repo. The browser still only talks to the web origin; the Next.js rewrite forwards `/api/*` to the API project's production URL. The API connects as a dedicated `teslapool_app` role that owns the tables, and RLS is enabled with no policies so Supabase's auto-generated Data API cannot read them. Because every request reaches the API through Vercel's proxy, `TRUST_PROXY=true` and the login rate limit is keyed by IP plus email.
+
+Limits to state in the README: the first request after idle pays a function cold start plus a new database connection (about 1–2 s). Free Supabase projects pause after a week without traffic. If none of this is available, the documented deployment is `docker compose up` on any machine with Docker.
 
 ## 14. Bonus: "If Oi Tesla goes viral"
 

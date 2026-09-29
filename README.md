@@ -5,7 +5,7 @@
 Simulated shared-ride MVP for three-wheeled electric "Teslas" in Dhaka — passengers pool compatible trips, drivers run a clear lifecycle, and seat capacity stays correct under concurrent claims.
 
 **Demo video:** _to be added on `release/v1.0.0` (Phase 15)_  
-**Deployment:** local Docker Compose (see [docs/DEPLOY.md](./docs/DEPLOY.md)) — free-tier Neon / Render / Vercel were not provisioned for this submission; Compose is the documented run target.
+**Live app:** https://dhaka-tesla-pool-puce.vercel.app (API health: https://dhaka-tesla-pool-api-eight.vercel.app/health). Vercel + Supabase free tiers in Mumbai; details and the Docker Compose fallback are in [docs/DEPLOY.md](./docs/DEPLOY.md).
 
 Companion docs: [`docs/PRD.md`](./docs/PRD.md) · [`docs/DESIGN.md`](./docs/DESIGN.md) · [`docs/TECH_STACK.md`](./docs/TECH_STACK.md) · [`docs/TASKS.md`](./docs/TASKS.md)
 
@@ -163,6 +163,7 @@ Full column detail: [`docs/DESIGN.md` §7](./docs/DESIGN.md#7-database-schema).
 | Tests | Vitest + real Postgres; Playwright e2e | Integrity under concurrency; one rush-hour UI story |
 | Repo | npm workspaces | `apps/web`, `apps/api`, `packages/shared` |
 | Containers | Docker Compose | Mandated portable demo |
+| Hosting | Vercel Hobby (web + API function) + Supabase free Postgres, Mumbai | Free tiers, one region close to Dhaka |
 
 Full justifications and switch criteria: [`docs/TECH_STACK.md`](./docs/TECH_STACK.md).
 
@@ -411,7 +412,7 @@ Assumptions A1–A13: [`docs/PRD.md` §12](./docs/PRD.md#12-assumptions).
 - No cancellation fee after driver arrival
 - Polling instead of WebSocket / SSE push
 - Single Postgres instance; no read replicas
-- Free-tier cloud deploy not wired; Compose is the documented deployment ([docs/DEPLOY.md](./docs/DEPLOY.md))
+- Free tiers: first request after idle pays a cold start (about 1–2 s), and the Supabase project pauses after a week without traffic ([docs/DEPLOY.md](./docs/DEPLOY.md#free-tier-limits))
 
 ---
 

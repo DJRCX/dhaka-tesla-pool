@@ -27,7 +27,7 @@ Versions are the current stable majors on npm at planning time (September 2026).
 | Tests | Vitest 5 + real Postgres; Playwright for one smoke test | No |
 | Package manager / repo | npm workspaces (`apps/web`, `apps/api`, `packages/shared`) | No |
 | Containers | Docker + Docker Compose | Yes |
-| Hosting | Vercel Hobby (web) + Render free (API) + Neon free (DB) | Free tier mandated |
+| Hosting | Vercel Hobby (web + API function) + Supabase free (DB) | Free tier mandated |
 | Lint / format | ESLint + Prettier | No |
 
 ## 2. Mandated choices, and how they are used
@@ -164,8 +164,8 @@ The current long-term-support line, used in Docker images for both apps. It ship
 | Piece | Picked | Alternatives | Notes |
 |---|---|---|---|
 | Web | Vercel Hobby | Netlify, Render static site | First-class Next.js support; `/api/*` rewrite points at the API URL |
-| API | Render free web service (from `apps/api/Dockerfile`) | Koyeb free, Fly.io | Sleeps when idle: first request after sleep is slow |
-| Database | Neon free Postgres | Supabase free Postgres | Serverless Postgres, branching for previews; compute scales to zero |
+| API | Vercel Function wrapping the Fastify app | Render free web service (Docker), Koyeb, Fly.io | Same account and region (`bom1`) as the web app; no sleeping container, only short cold starts |
+| Database | Supabase free Postgres (Mumbai) | Neon free Postgres | Same region as the functions; transaction pooler suits serverless connections |
 | Fallback | `docker compose up` on any Docker host | — | Documented if a free tier cannot host the API |
 
 **Would switch when:** there is real traffic or an uptime requirement. Then move to a paid always-on instance close to Bangladesh (for example, Singapore or Mumbai regions) with a managed Postgres in the same region.
